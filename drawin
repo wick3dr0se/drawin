@@ -1,0 +1,82 @@
+#!/bin/bash
+
+init_term(){
+  stty -icanon -echo
+  shopt -s checkwinsize; (:;:)
+
+  local x y
+  ((x=COLUMNS/2)); ((y=LINES/2))
+
+  printf '\e[?1049h\e[?1000h\e[?25l\e[%d;%dH' "$y" "$x"
+}
+
+end(){
+  stty icanon echo
+  printf '\e[?1049l\e[?1000l\e[?25h\e[?7h'
+  exit
+}
+
+getin(){
+  read -rsn 1 IN
+  case $IN in
+    $'\e') read -rsn 2 IN; [[ $IN == '[M' ]]&&{ read -rsn 3; IN="$IN$REPLY"; };;
+  esac
+}
+
+draw_key(){ printf '\e%s\e7\e[4%dm \e[m\e8' "$1" "${COLOR-2}"; }
+
+draw_click(){
+  clickX="${asciiMap[${1:-__}]}" clickY="${asciiMap[${2:-__}]}"
+
+  (( clickY < LINES ))&&
+    printf '\e[%d;%dH\e7\e[4%dm \e[m\e8' "$clickY" "$clickX" "${COLOR-4}"
+}
+
+cbar(){
+  printf '\e7\e[%dH\e[1;43;30mdrawin\e[m ' "$LINES"
+  printf '%b\e8' "${colorKeys[*]}"
+}
+
+trap end INT EXIT
+trap init_term WINCH
+
+for _ in {a..z}; do lowerAlphaAscii+=("$_"); done
+for _ in {0..9}; do numericAscii+=("$_"); done
+
+upperAlphaAscii=("${lowerAlphaAscii[@]^}")
+octalEscapedAscii=(
+  '\177' '\000' '\001' '\002' '\003' '\004' '\005' '\006' '\007'
+  '\010' '\011' '\012' '\013' '\014' '\015' '\016' '\017'
+  '\020' '\021' '\022' '\023' '\024' '\025' '\026' '\027'
+  '\030' '\031' '\032' '\033' '\034' '\035' '\036' '\037' '\040'
+)
+ASCII=(
+  '!' '"' '#' '$' '%' '&' "'" '(' ')' '*' '+' ',' '-' '.' '/'
+  "${numericAscii[@]}" ':' ';' '<' '=' '>' '?' '@'
+  "${upperAlphaAscii[@]}" '[' '\' ']' '^' '_' '`'
+  "${lowerAlphaAscii[@]}" '{' '|' '}' '~'
+  "${octalEscapedAscii[@]}"
+)
+colorKeys=(
+  '[1]\e[1;41m \e[m' '[2]\e[1;42m \e[m' '[3]\e[1;43m \e[m' '[4]\e[1;44m \e[m'
+  '[5]\e[1;45m \e[m' '[6]\e[1;46m \e[m' '[7]\e[1;47m \e[m' '[8]\e[1;40m \e[m'
+)
+declare -A charToSeq=([A]=D [H]=D [S]=B [J]=B [W]=A [K]=A [D]=C [L]=C)
+declare -A asciiMap[__]=0
+
+for _ in "${ASCII[@]}"; do asciiMap["$_"]="${#asciiMap[@]}"; done
+
+init_term
+
+for((;;)){
+  cbar
+
+  getin
+  case ${IN^} in
+    [1-8]) (( IN == 8 ))&& IN=0; COLOR="$IN";;
+    Q) end;;
+    W|A|S|D|H|J|K|L) draw_key "[${charToSeq[$IN]}";;
+    \[[A-D]) draw_key "$IN";;
+    '[M'???) : "${IN#\[M?}"; draw_click "${_%?}" "${_#?}";;
+  esac
+}
