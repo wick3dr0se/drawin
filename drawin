@@ -18,9 +18,9 @@ end(){
 
 getin(){
   read -rsn 1 IN
-  case $IN in
-    $'\e') read -rsn 2 IN; [[ $IN == '[M' ]]&&{ read -rsn 3; IN="$IN$REPLY"; };;
-  esac
+  [[ $IN == $'\e' ]]&&{
+    read -rsn 2 IN; [[ $IN == '[M' ]]&&{ read -rsn 3; IN="$IN$REPLY"; }
+  }
 }
 
 draw_key(){ printf '\e%s\e7\e[4%dm \e[m\e8' "$1" "${COLOR-2}"; }
