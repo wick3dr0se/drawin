@@ -7,7 +7,7 @@ init_term(){
   local x y
   ((x=COLUMNS/2)); ((y=LINES/2))
 
-  printf '\e[?1049h\e[?1000h\e[?25l\e[%d;%dH' "$y" "$x"
+  printf '\e[?1049h\e[2J\e[?1000h\e[?25l\e[%d;%dH' "$y" "$x"
 }
 
 end(){
@@ -19,7 +19,8 @@ end(){
 getin(){
   read -rsn 1 IN
   [[ $IN == $'\e' ]]&&{
-    read -rsn 2 IN; [[ $IN == '[M' ]]&&{ read -rsn 3; IN="$IN$REPLY"; }
+    read -rsn 2 IN
+    [[ $IN == '[M' ]]&&{ read -rsn 3; IN="$IN$REPLY"; }
   }
 }
 
@@ -28,8 +29,7 @@ draw_key(){ printf '\e%s\e7\e[4%dm \e[m\e8' "$1" "${COLOR-2}"; }
 draw_click(){
   clickX="${asciiMap[${1:-__}]}" clickY="${asciiMap[${2:-__}]}"
 
-  (( clickY < LINES ))&&
-    printf '\e[%d;%dH\e7\e[4%dm \e[m\e8' "$clickY" "$clickX" "${COLOR-4}"
+  printf '\e[%d;%dH\e7\e[4%dm \e[m\e8' "$clickY" "$clickX" "${COLOR-4}"
 }
 
 cbar(){
